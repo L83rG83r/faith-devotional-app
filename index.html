@@ -1,0 +1,1905 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Daily Devotional</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script type="module">
+
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        import { getFirestore, doc, setDoc, onSnapshot, collection, query, orderBy, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+ 
+
+        window.firebase = {
+
+            initializeApp,
+
+            getAuth,
+
+            signInAnonymously,
+
+            signInWithCustomToken,
+
+            onAuthStateChanged,
+
+            getFirestore,
+
+            doc,
+
+            setDoc,
+
+            onSnapshot,
+
+            collection,
+
+            query,
+
+            orderBy,
+
+            deleteDoc
+
+        };
+
+    </script>
+
+    <style>
+
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+        body {
+
+            font-family: 'Inter', sans-serif;
+
+            transition: background-color 0.5s ease;
+
+        }
+
+        .devotional-card {
+
+            min-height: 500px;
+
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+    <div id="root"></div>
+
+ 
+
+    <script type="text/babel">
+
+        const { useState, useEffect } = React;
+
+        const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, doc, setDoc, onSnapshot, collection, query, orderBy, deleteDoc } = firebase;
+
+ 
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+ 
+
+        const BIBLE_BOOKS = [
+
+          'Genesis', 'Exodus', 'Leviticus', 'Numbers', 'Deuteronomy', 'Joshua', 'Judges', 'Ruth',
+
+          '1 Samuel', '2 Samuel', '1 Kings', '2 Kings', '1 Chronicles', '2 Chronicles', 'Ezra',
+
+          'Nehemiah', 'Esther', 'Job', 'Psalm', 'Proverbs', 'Ecclesiastes', 'Song of Solomon',
+
+          'Isaiah', 'Jeremiah', 'Lamentations', 'Ezekiel', 'Daniel', 'Hosea', 'Joel', 'Amos',
+
+          'Obadiah', 'Jonah', 'Micah', 'Nahum', 'Habakkuk', 'Zephaniah', 'Haggai', 'Zechariah',
+
+          'Malachi', 'Matthew', 'Mark', 'Luke', 'John', 'Acts', 'Romans', '1 Corinthians',
+
+          '2 Corinthians', 'Galatians', 'Ephesians', 'Philippians', 'Colossians', '1 Thessalonians',
+
+          '2 Thessalonians', '1 Timothy', '2 Timothy', 'Titus', 'Philemon', 'Hebrews', 'James',
+
+          '1 Peter', '2 Peter', '1 John', '2 John', '3 John', 'Jude', 'Revelation'
+
+        ];
+
+       
+
+        const getEmojiForVerse = (verse) => {
+
+          if (!verse) return '✨';
+
+          const book = verse.split(' ')[0];
+
+          if (book === '1' || book === '2' || book === '3') {
+
+            const fullBookName = verse.split(' ').slice(0, 2).join(' ');
+
+            if (fullBookName.includes('Samuel')) return '👑';
+
+            if (fullBookName.includes('Kings')) return '🏰';
+
+            if (fullBookName.includes('Chronicles')) return '📖';
+
+            if (fullBookName.includes('Corinthians')) return '⛪';
+
+            if (fullBookName.includes('Thessalonians')) return '⏳';
+
+            if (fullBookName.includes('Timothy')) return '📜';
+
+            if (fullBookName.includes('Peter')) return '🛡️';
+
+            if (fullBookName.includes('John')) return '✨';
+
+          }
+
+         
+
+          switch (book) {
+
+            case 'Genesis': return '🌎';
+
+            case 'Exodus': return '🔥';
+
+            case 'Leviticus': return '🌿';
+
+            case 'Numbers': return '🧭';
+
+            case 'Deuteronomy': return '📜';
+
+            case 'Joshua': return '⚔️';
+
+            case 'Judges': return '⚖️';
+
+            case 'Ruth': return '🌾';
+
+            case 'Ezra': return '🏛️';
+
+            case 'Nehemiah': return '🏗️';
+
+            case 'Esther': return '👸';
+
+            case 'Job': return '⛈️';
+
+            case 'Psalm': return '🕊️';
+
+            case 'Proverbs': return '💡';
+
+            case 'Ecclesiastes': return '⌛';
+
+            case 'Song': return '💖';
+
+            case 'Isaiah': return '🦅';
+
+            case 'Jeremiah': return '🙏';
+
+            case 'Lamentations': return '😥';
+
+            case 'Ezekiel': return '🌀';
+
+            case 'Daniel': return '🦁';
+
+            case 'Hosea': return '💍';
+
+            case 'Joel': return '🦗';
+
+            case 'Amos': return '⚖️';
+
+            case 'Obadiah': return '🌄';
+
+            case 'Jonah': return '🐳';
+
+            case 'Micah': return '⛰️';
+
+            case 'Nahum': return '🌊';
+
+            case 'Habakkuk': return '🚶';
+
+            case 'Zephaniah': return '🌅';
+
+            case 'Haggai': return '🔨';
+
+            case 'Zechariah': return '🐴';
+
+            case 'Malachi': return '☀️';
+
+            case 'Matthew': return '👑';
+
+            case 'Mark': return '🦁';
+
+            case 'Luke': return '👨‍⚕️';
+
+            case 'Acts': return '🔥';
+
+            case 'Romans': return '🌱';
+
+            case 'Galatians': return '🍎';
+
+            case 'Ephesians': return '⚔️';
+
+            case 'Philippians': return '❤️';
+
+            case 'Colossians': return '🙏';
+
+            case 'Titus': return '📖';
+
+            case 'Philemon': return '⛓️';
+
+            case 'Hebrews': return '✝️';
+
+            case 'James': return '🗣️';
+
+            case 'Jude': return '🧱';
+
+            case 'Revelation': return '🐉';
+
+            default: return '📖';
+
+          }
+
+        };
+
+       
+
+        const getBackgroundColorForVerse = (verse) => {
+
+          if (!verse) return 'bg-gray-100 dark:bg-gray-900';
+
+          const book = verse.split(' ')[0];
+
+          if (book === '1' || book === '2' || book === '3') {
+
+            const fullBookName = verse.split(' ').slice(0, 2).join(' ');
+
+            if (fullBookName.includes('Philippians')) return 'bg-gradient-to-br from-pink-300 to-purple-400 dark:from-pink-800 dark:to-purple-900';
+
+            if (fullBookName.includes('Romans')) return 'bg-gradient-to-br from-blue-300 to-indigo-400 dark:from-blue-800 dark:to-indigo-900';
+
+            if (fullBookName.includes('John')) return 'bg-gradient-to-br from-sky-300 to-cyan-400 dark:from-sky-800 dark:to-cyan-900';
+
+            if (fullBookName.includes('Peter')) return 'bg-gradient-to-br from-slate-300 to-gray-400 dark:from-slate-800 dark:to-gray-900';
+
+            if (fullBookName.includes('Ephesians')) return 'bg-gradient-to-br from-emerald-300 to-green-400 dark:from-emerald-800 dark:to-green-900';
+
+            if (fullBookName.includes('Galatians')) return 'bg-gradient-to-br from-lime-300 to-emerald-400 dark:from-lime-800 dark:to-emerald-900';
+
+            if (fullBookName.includes('Timothy')) return 'bg-gradient-to-br from-cyan-300 to-blue-400 dark:from-cyan-800 dark:to-blue-900';
+
+          }
+
+         
+
+          switch (book) {
+
+            case 'Proverbs': return 'bg-gradient-to-br from-yellow-300 to-orange-400 dark:from-yellow-800 dark:to-orange-900';
+
+            case 'Jeremiah': return 'bg-gradient-to-br from-green-300 to-teal-400 dark:from-green-800 dark:to-teal-900';
+
+            case 'Joshua': return 'bg-gradient-to-br from-red-300 to-rose-400 dark:from-red-800 dark:to-rose-900';
+
+            case 'Psalm': return 'bg-gradient-to-br from-purple-300 to-fuchsia-400 dark:from-purple-800 dark:to-fuchsia-900';
+
+            case 'Isaiah': return 'bg-gradient-to-br from-amber-300 to-lime-400 dark:from-amber-800 dark:to-lime-900';
+
+            case 'Matthew': return 'bg-gradient-to-br from-rose-300 to-red-400 dark:from-rose-800 dark:to-red-900';
+
+            default: return 'bg-gradient-to-br from-gray-300 to-slate-400 dark:from-gray-800 dark:to-slate-900';
+
+          }
+
+        };
+
+       
+
+        // Mock data for chapter and verse counts.
+
+        const getChapterCount = (book) => {
+
+          const counts = {
+
+            'Genesis': 50, 'Exodus': 40, 'Matthew': 28, 'John': 21, 'Psalm': 150,
+
+            'Proverbs': 31, 'Isaiah': 66, 'Jeremiah': 52, 'Revelation': 22,
+
+            'Philippians': 4, 'Romans': 16, '1 Corinthians': 16, 'Hebrews': 13,
+
+            'James': 5, 'Jude': 1
+
+          };
+
+          return counts[book] || 30;
+
+        };
+
+ 
+
+        const getVerseCount = (book, chapter) => {
+
+          if (book === 'Psalm' && chapter === '119') return 176;
+
+          if (book === 'John' && chapter === '3') return 36;
+
+          if (book === 'Romans' && chapter === '8') return 39;
+
+          return Math.floor(Math.random() * 20) + 15;
+
+        };
+
+       
+
+        const App = () => {
+
+          const [db, setDb] = useState(null);
+
+          const [auth, setAuth] = useState(null);
+
+          const [userId, setUserId] = useState(null);
+
+          const [isAuthReady, setIsAuthReady] = useState(false);
+
+       
+
+          const [isLoading, setIsLoading] = useState(false);
+
+          const [devotionalContent, setDevotionalContent] = useState(null);
+
+          const [journalEntry, setJournalEntry] = useState('');
+
+          const [savedEntries, setSavedEntries] = useState([]);
+
+          const [selectedEntry, setSelectedEntry] = useState(null);
+
+          const [searchTerm, setSearchTerm] = useState('');
+
+          const [expandedEntryId, setExpandedEntryId] = useState(null);
+
+          const [isSpeaking, setIsSpeaking] = useState(false);
+
+          const [audioInstance, setAudioInstance] = useState(null);
+
+          const [isAudioLoading, setIsAudioLoading] = useState(false);
+
+         
+
+          const [selectedBook, setSelectedBook] = useState('');
+
+          const [selectedChapter, setSelectedChapter] = useState('');
+
+          const [selectedVerseNumber, setSelectedVerseNumber] = useState('');
+
+          const [topic, setTopic] = useState('');
+
+       
+
+          const [chapters, setChapters] = useState([]);
+
+          const [verses, setVerses] = useState([]);
+
+         
+
+          // API call to fetch a KJV verse.
+
+          const fetchVerseFromAPI = async (book, chapter, verse) => {
+
+            const query = `${book} ${chapter}:${verse}`.replace(/ /g, '+');
+
+            const url = `https://bible-api.com/${query}?translation=kjv`;
+
+           
+
+            try {
+
+              const response = await fetch(url);
+
+              if (!response.ok) {
+
+                throw new Error(`Verse not found. Please try another one.`);
+
+              }
+
+              const data = await response.json();
+
+             
+
+              if (data.error) {
+
+                throw new Error(data.error);
+
+              }
+
+             
+
+              return {
+
+                verse: data.reference,
+
+                text: data.text
+
+              };
+
+             
+
+            } catch (error) {
+
+              console.error("API fetch error:", error);
+
+              throw new Error("Failed to fetch verse. Please check your spelling and try again.");
+
+            }
+
+          };
+
+         
+
+          // Fetches a verse and devotional content based on a topic using Gemini.
+
+          const fetchDevotionalFromTopic = async (topic) => {
+
+              const systemPrompt = "You are a warm, encouraging, and knowledgeable spiritual guide. Your purpose is to find an appropriate King James Version (KJV) Bible verse for a given topic and provide a short, insightful devotional for it. You must provide the verse reference (KJV) and text, a devotional, a personal affirmation, a suggested prayer, and a thought-provoking question for journaling. Every prayer must end with the phrase 'In Jesus' name, Amen.'. All responses must be in JSON format with keys 'verse', 'verseText', 'devotional', 'affirmation', 'prayer', and 'question'. Do not include any other text or explanation. The devotional content should be entirely based on the verse you choose.";
+
+              const userQuery = `Find a single Bible verse from the King James Version that relates to the topic of "${topic}". Then, create a short devotional, a personal affirmation, a suggested prayer, and a thought-provoking question for journaling based on that verse.`;
+
+             
+
+              const apiKey = "";
+
+              const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+         
+
+              const payload = {
+
+                contents: [{ parts: [{ text: userQuery }] }],
+
+                systemInstruction: {
+
+                  parts: [{ text: systemPrompt }]
+
+                },
+
+                generationConfig: {
+
+                  responseMimeType: "application/json",
+
+                  responseSchema: {
+
+                    type: "OBJECT",
+
+                    properties: {
+
+                      "verse": { "type": "STRING" },
+
+                      "verseText": { "type": "STRING" },
+
+                      "devotional": { "type": "STRING" },
+
+                      "affirmation": { "type": "STRING" },
+
+                      "prayer": { "type": "STRING" },
+
+                      "question": { "type": "STRING" },
+
+                    },
+
+                    "propertyOrdering": ["verse", "verseText", "devotional", "affirmation", "prayer", "question"]
+
+                  }
+
+                }
+
+              };
+
+ 
+
+              try {
+
+                const response = await fetch(apiUrl, {
+
+                  method: 'POST',
+
+                  headers: { 'Content-Type': 'application/json' },
+
+                  body: JSON.stringify(payload)
+
+                });
+
+                const result = await response.json();
+
+                const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                const parsedContent = JSON.parse(text);
+
+                return parsedContent;
+
+              } catch (error) {
+
+                console.error("Failed to fetch devotional content from topic:", error);
+
+                throw new Error("Failed to generate content for this topic.");
+
+              }
+
+          };
+
+ 
+
+          const getRandomVerse = async () => {
+
+            const verses = [
+
+              { book: 'John', chapter: '3', verse: '16' },
+
+              { book: 'Psalm', chapter: '23', verse: '1' },
+
+              { book: 'Philippians', chapter: '4', verse: '13' },
+
+              { book: 'Genesis', chapter: '1', verse: '1' },
+
+              { book: 'Isaiah', chapter: '41', verse: '10' },
+
+              { book: 'Jeremiah', chapter: '29', verse: '11' },
+
+              { book: '1 Corinthians', chapter: '13', verse: '4'},
+
+              { book: 'Romans', chapter: '8', verse: '28'}
+
+            ];
+
+            const randomVerse = verses[Math.floor(Math.random() * verses.length)];
+
+            return await fetchVerseFromAPI(randomVerse.book, randomVerse.chapter, randomVerse.verse);
+
+          };
+
+       
+
+          // Initialize Firebase and set up auth state listener
+
+          useEffect(() => {
+
+            try {
+
+              const app = initializeApp(firebaseConfig);
+
+              const firestore = getFirestore(app);
+
+              const authInstance = getAuth(app);
+
+              setDb(firestore);
+
+              setAuth(authInstance);
+
+       
+
+              const unsubscribe = onAuthStateChanged(authInstance, async (user) => {
+
+                if (user) {
+
+                  setUserId(user.uid);
+
+                } else {
+
+                  try {
+
+                    if (initialAuthToken) {
+
+                      await signInWithCustomToken(authInstance, initialAuthToken);
+
+                    } else {
+
+                      await signInAnonymously(authInstance);
+
+                    }
+
+                  } catch (error) {
+
+                    console.error("Firebase auth error:", error);
+
+                  }
+
+                }
+
+                setIsAuthReady(true);
+
+              });
+
+       
+
+              return () => unsubscribe();
+
+            } catch (e) {
+
+              console.error("Firebase initialization error:", e);
+
+            }
+
+          }, []);
+
+         
+
+          // Effect to clean up audio instance when devotional content changes
+
+          useEffect(() => {
+
+            if (audioInstance) {
+
+              audioInstance.pause();
+
+              if (audioInstance.src) {
+
+                URL.revokeObjectURL(audioInstance.src);
+
+              }
+
+              setAudioInstance(null);
+
+              setIsSpeaking(false);
+
+            }
+
+          }, [devotionalContent]);
+
+       
+
+          // Effect to update chapters dropdown when book changes
+
+          useEffect(() => {
+
+            if (selectedBook) {
+
+              const chapterCount = getChapterCount(selectedBook);
+
+              const chapterOptions = Array.from({ length: chapterCount }, (_, i) => i + 1);
+
+              setChapters(chapterOptions);
+
+              setSelectedChapter('');
+
+              setSelectedVerseNumber('');
+
+            } else {
+
+              setChapters([]);
+
+              setVerses([]);
+
+            }
+
+          }, [selectedBook]);
+
+       
+
+          // Effect to update verses dropdown when chapter changes
+
+          useEffect(() => {
+
+            if (selectedBook && selectedChapter) {
+
+              const verseCount = getVerseCount(selectedBook, selectedChapter);
+
+              const verseOptions = Array.from({ length: verseCount }, (_, i) => i + 1);
+
+              setVerses(verseOptions);
+
+              setSelectedVerseNumber('');
+
+            } else {
+
+              setVerses([]);
+
+            }
+
+          }, [selectedBook, selectedChapter]);
+
+ 
+
+          const handleVerseSearch = async () => {
+
+              if (!selectedBook || !selectedChapter || !selectedVerseNumber) {
+
+                  setDevotionalContent({
+
+                      verse: 'Invalid Input',
+
+                      verseText: 'Please enter a valid book, chapter, and verse.',
+
+                      devotional: "The verse you selected could not be found. Please check your selection and try again.",
+
+                      affirmation: "I trust in God's perfect timing.",
+
+                      prayer: "Lord, guide my steps and my search. In Jesus' name, Amen.",
+
+                      question: "How can I seek guidance in new ways today?",
+
+                  });
+
+                  return;
+
+              }
+
+             
+
+              setIsLoading(true);
+
+              setDevotionalContent(null);
+
+              try {
+
+                  const verseData = await fetchVerseFromAPI(selectedBook, selectedChapter, selectedVerseNumber);
+
+                  await fetchDevotional({ type: 'verse', value: verseData });
+
+              } catch (error) {
+
+                  console.error("Error fetching verse:", error);
+
+                  setDevotionalContent({
+
+                      verse: 'Error',
+
+                      verseText: error.message,
+
+                      devotional: "The verse you selected could not be found. Please check your selection and try again.",
+
+                      affirmation: "I trust in God's perfect timing.",
+
+                      prayer: "Lord, guide my steps and my search. In Jesus' name, Amen.",
+
+                      question: "How can I seek guidance in new ways today?",
+
+                  });
+
+              } finally {
+
+                  setIsLoading(false);
+
+              }
+
+          };
+
+ 
+
+          const handleTopicSearch = async () => {
+
+              if (!topic.trim()) {
+
+                  setDevotionalContent({
+
+                      verse: 'Invalid Topic',
+
+                      verseText: 'Please enter a topic to search for.',
+
+                      devotional: "Please provide a topic. Be specific, for example: 'healing from a broken heart'.",
+
+                      affirmation: "My strength comes from God.",
+
+                      prayer: "Lord, please give me clarity as I seek your guidance. In Jesus' name, Amen.",
+
+                      question: "What is one specific step you can take to move forward?",
+
+                  });
+
+                  return;
+
+              }
+
+ 
+
+              setIsLoading(true);
+
+              setDevotionalContent(null);
+
+              try {
+
+                  const content = await fetchDevotionalFromTopic(topic);
+
+                  setDevotionalContent(content);
+
+              } catch (error) {
+
+                  console.error("Error fetching devotional from topic:", error);
+
+                  setDevotionalContent({
+
+                      verse: 'Error',
+
+                      verseText: 'Failed to find a verse for this topic.',
+
+                      devotional: "Sorry, I couldn't find a verse for that topic. Please try a different one.",
+
+                      affirmation: "I trust in God's wisdom.",
+
+                      prayer: "Lord, thank you for guiding me. In Jesus' name, Amen.",
+
+                      question: "How can I continue to seek spiritual guidance today?",
+
+                  });
+
+              } finally {
+
+                  setIsLoading(false);
+
+              }
+
+          };
+
+       
+
+          const handleRandomVerse = async () => {
+
+            setIsLoading(true);
+
+            setDevotionalContent(null);
+
+            try {
+
+              const verseData = await getRandomVerse();
+
+              setSelectedBook(verseData.verse.split(' ')[0]);
+
+              setSelectedChapter(verseData.verse.split(' ')[1].split(':')[0]);
+
+              setSelectedVerseNumber(verseData.verse.split(':')[1]);
+
+              await fetchDevotional({ type: 'verse', value: verseData });
+
+            } catch (error) {
+
+              console.error("Error fetching random verse:", error);
+
+              setDevotionalContent({
+
+                verse: 'Error',
+
+                verseText: "Failed to load a random verse. Please try again.",
+
+                devotional: "The verse you selected could not be found. Please check your selection and try again.",
+
+                affirmation: "I trust in God's perfect timing.",
+
+                prayer: "Lord, guide my steps and my search. In Jesus' name, Amen.",
+
+                question: "How can I seek guidance in new ways today?",
+
+              });
+
+              setIsLoading(false);
+
+            }
+
+          };
+
+       
+
+          // Fetch saved journal entries from Firestore
+
+          useEffect(() => {
+
+            if (!db || !isAuthReady || !userId) return;
+
+       
+
+            const collectionPath = `artifacts/${appId}/users/${userId}/journalEntries`;
+
+            const entriesRef = collection(db, collectionPath);
+
+            const q = query(entriesRef, orderBy("timestamp", "desc"));
+
+       
+
+            const unsubscribe = onSnapshot(q, (snapshot) => {
+
+              const entries = snapshot.docs.map(doc => ({
+
+                id: doc.id,
+
+                ...doc.data()
+
+              }));
+
+              setSavedEntries(entries);
+
+            }, (error) => {
+
+              console.error("Firestore data listener failed:", error);
+
+            });
+
+       
+
+            return () => unsubscribe();
+
+          }, [db, isAuthReady, userId]);
+
+       
+
+          // Save or update journal entry
+
+          const handleSaveEntry = async () => {
+
+            if (!db || !userId || journalEntry.trim() === '') return;
+
+            if (!devotionalContent) {
+
+              console.error("No devotional content to save with the journal entry.");
+
+              return;
+
+            }
+
+       
+
+            const entryId = selectedEntry ? selectedEntry.id : new Date().toISOString();
+
+            const docPath = `artifacts/${appId}/users/${userId}/journalEntries/${entryId}`;
+
+            const entryData = {
+
+              text: journalEntry,
+
+              timestamp: new Date().toISOString(),
+
+              date: new Date().toLocaleDateString(),
+
+              devotional: devotionalContent,
+
+            };
+
+       
+
+            try {
+
+              await setDoc(doc(db, docPath), entryData);
+
+              setJournalEntry('');
+
+              setSelectedEntry(null);
+
+            } catch (e) {
+
+              console.error("Error saving journal entry:", e);
+
+            }
+
+          };
+
+       
+
+          // Delete a journal entry
+
+          const handleDeleteEntry = async (entryId) => {
+
+            if (!db || !userId) return;
+
+            const docPath = `artifacts/${appId}/users/${userId}/journalEntries/${entryId}`;
+
+            try {
+
+              await deleteDoc(doc(db, docPath));
+
+              if (selectedEntry && selectedEntry.id === entryId) {
+
+                setJournalEntry('');
+
+                setSelectedEntry(null);
+
+              }
+
+            } catch (e) {
+
+              console.error("Error deleting journal entry:", e);
+
+            }
+
+          };
+
+       
+
+          // Filtered entries based on search term
+
+          const filteredEntries = savedEntries.filter(entry =>
+
+            entry.text.toLowerCase().includes(searchTerm.toLowerCase()) ||
+
+            (entry.devotional && entry.devotional.verse.toLowerCase().includes(searchTerm.toLowerCase()))
+
+          );
+
+         
+
+          const handleEditEntry = (entry) => {
+
+            setSelectedEntry(entry);
+
+            setJournalEntry(entry.text);
+
+            if (entry.devotional) {
+
+              setDevotionalContent(entry.devotional);
+
+            }
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+          };
+
+       
+
+          const handleToggleExpand = (id) => {
+
+            setExpandedEntryId(expandedEntryId === id ? null : id);
+
+          };
+
+       
+
+          // Helper function to convert base64 to ArrayBuffer
+
+          const base64ToArrayBuffer = (base64) => {
+
+            const binaryString = window.atob(base64);
+
+            const len = binaryString.length;
+
+            const bytes = new Uint8Array(len);
+
+            for (let i = 0; i < len; i++) {
+
+              bytes[i] = binaryString.charCodeAt(i);
+
+            }
+
+            return bytes.buffer;
+
+          };
+
+       
+
+          // Helper function to convert PCM to WAV format
+
+          const pcmToWav = (pcmData, sampleRate) => {
+
+            const pcm16 = new Int16Array(pcmData);
+
+            const dataLength = pcm16.length * 2;
+
+            const buffer = new ArrayBuffer(44 + dataLength);
+
+            const view = new DataView(buffer);
+
+       
+
+            let offset = 0;
+
+       
+
+            // RIFF identifier
+
+            writeString(view, offset, 'RIFF');
+
+            offset += 4;
+
+            // file length
+
+            view.setUint32(offset, 36 + dataLength, true);
+
+            offset += 4;
+
+            // RIFF type
+
+            writeString(view, offset, 'WAVE');
+
+            offset += 4;
+
+            // format chunk identifier
+
+            writeString(view, offset, 'fmt ');
+
+            offset += 4;
+
+            // format chunk length
+
+            view.setUint32(offset, 16, true);
+
+            offset += 4;
+
+            // sample format (1 for PCM)
+
+            view.setUint16(offset, 1, true);
+
+            offset += 2;
+
+            // channel count
+
+            view.setUint16(offset, 1, true);
+
+            offset += 2;
+
+            // sample rate
+
+            view.setUint32(offset, sampleRate, true);
+
+            offset += 4;
+
+            // byte rate (sample rate * block align)
+
+            view.setUint32(offset, sampleRate * 2, true);
+
+            offset += 4;
+
+            // block align (channels * bytes per sample)
+
+            view.setUint16(offset, 2, true);
+
+            offset += 2;
+
+            // bits per sample
+
+            view.setUint16(offset, 16, true);
+
+            offset += 2;
+
+            // data chunk identifier
+
+            writeString(view, offset, 'data');
+
+            offset += 4;
+
+            // data chunk length
+
+            view.setUint32(offset, dataLength, true);
+
+            offset += 4;
+
+       
+
+            // Write the PCM data
+
+            for (let i = 0; i < pcm16.length; i++, offset += 2) {
+
+              view.setInt16(offset, pcm16[i], true);
+
+            }
+
+           
+
+            return new Blob([buffer], { type: 'audio/wav' });
+
+          };
+
+         
+
+          const writeString = (view, offset, string) => {
+
+            for (let i = 0; i < string.length; i++) {
+
+              view.setUint8(offset + i, string.charCodeAt(i));
+
+            }
+
+          };
+
+       
+
+          // Handle TTS and playback
+
+          const handleReadAloud = async () => {
+
+            if (!devotionalContent || isAudioLoading) return;
+
+           
+
+            if (audioInstance) {
+
+              audioInstance.pause();
+
+              if (audioInstance.src) {
+
+                URL.revokeObjectURL(audioInstance.src);
+
+              }
+
+              setAudioInstance(null);
+
+            }
+
+           
+
+            setIsSpeaking(true);
+
+            setIsAudioLoading(true);
+
+       
+
+            const textToSpeak = `
+
+              The verse for today is ${devotionalContent.verse}.
+
+              ${devotionalContent.verseText}.
+
+              Devotional: ${devotionalContent.devotional}.
+
+              Affirmation: ${devotionalContent.affirmation}.
+
+              A Prayer to Consider: ${devotionalContent.prayer}.
+
+            `;
+
+           
+
+            const payload = {
+
+              contents: [{
+
+                parts: [{ text: textToSpeak }]
+
+              }],
+
+              generationConfig: {
+
+                responseModalities: ["AUDIO"],
+
+                speechConfig: {
+
+                  voiceConfig: {
+
+                    prebuiltVoiceConfig: { voiceName: "Iapetus" }
+
+                  }
+
+                }
+
+              },
+
+              model: "gemini-2.5-flash-preview-tts"
+
+            };
+
+       
+
+            const apiKey = "";
+
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+
+       
+
+            try {
+
+              const response = await fetch(apiUrl, {
+
+                method: 'POST',
+
+                headers: { 'Content-Type': 'application/json' },
+
+                body: JSON.stringify(payload)
+
+              });
+
+       
+
+              if (!response.ok) {
+
+                throw new Error(`API response was not ok: ${response.statusText}`);
+
+              }
+
+       
+
+              const result = await response.json();
+
+              const part = result?.candidates?.[0]?.content?.parts?.[0];
+
+              const audioData = part?.inlineData?.data;
+
+              const mimeType = part?.inlineData?.mimeType;
+
+       
+
+              if (audioData && mimeType && mimeType.startsWith("audio/L16")) {
+
+                const sampleRateMatch = mimeType.match(/rate=(\d+)/);
+
+                const sampleRate = sampleRateMatch ? parseInt(sampleRateMatch[1], 10) : 16000;
+
+                const pcmData = base64ToArrayBuffer(audioData);
+
+                const wavBlob = pcmToWav(pcmData, sampleRate);
+
+                const audioUrl = URL.createObjectURL(wavBlob);
+
+               
+
+                const audio = new Audio(audioUrl);
+
+                setAudioInstance(audio);
+
+                audio.play();
+
+                audio.onended = () => {
+
+                  setIsSpeaking(false);
+
+                  setAudioInstance(null);
+
+                  setIsAudioLoading(false);
+
+                  URL.revokeObjectURL(audioUrl);
+
+                };
+
+              } else {
+
+                console.error("Invalid audio data from API:", result);
+
+              }
+
+            } catch (error) {
+
+              console.error("Error reading devotional aloud:", error);
+
+              setIsSpeaking(false);
+
+            } finally {
+
+                setIsAudioLoading(false);
+
+            }
+
+          };
+
+       
+
+          // Handle pausing and resuming audio
+
+          const handleTogglePlayPause = () => {
+
+            if (audioInstance) {
+
+              if (audioInstance.paused) {
+
+                audioInstance.play();
+
+                setIsSpeaking(true);
+
+              } else {
+
+                audioInstance.pause();
+
+                setIsSpeaking(false);
+
+              }
+
+            }
+
+          };
+
+       
+
+          return (
+
+            <div className={`min-h-screen ${getBackgroundColorForVerse(devotionalContent?.verse)} text-gray-900 dark:text-gray-100 flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 font-sans transition-colors duration-500`}>
+
+              <div className="w-full max-w-4xl bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden">
+
+                <div className="p-6 sm:p-8">
+
+                  <h1 className="text-3xl sm:text-4xl font-extrabold text-center mb-2 text-indigo-600 dark:text-indigo-400">Daily Devotional</h1>
+
+                  <p className="text-sm sm:text-base text-center mb-6 text-gray-600 dark:text-gray-300">
+
+                    A space for reflection and prayer.
+
+                  </p>
+
+       
+
+                  <div className="bg-gray-50 dark:bg-gray-700 p-4 sm:p-6 rounded-xl border border-gray-200 dark:border-gray-700 mb-6 transition-all duration-300">
+
+                    <h2 className="text-xl font-semibold mb-4 text-indigo-700 dark:text-indigo-300">Search for a Verse by Reference</h2>
+
+                    <div className="flex flex-col sm:flex-row gap-4 mb-4">
+
+                      <select
+
+                        value={selectedBook}
+
+                        onChange={(e) => setSelectedBook(e.target.value)}
+
+                        className="flex-1 px-4 py-2 rounded-full border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+
+                      >
+
+                        <option value="" disabled>Select a Book</option>
+
+                        {BIBLE_BOOKS.map((book) => (
+
+                          <option key={book} value={book}>{book}</option>
+
+                        ))}
+
+                      </select>
+
+                      <select
+
+                        value={selectedChapter}
+
+                        onChange={(e) => setSelectedChapter(e.target.value)}
+
+                        disabled={!selectedBook}
+
+                        className="flex-1 px-4 py-2 rounded-full border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+
+                      >
+
+                        <option value="" disabled>{selectedBook ? 'Select a Chapter' : 'Select a Book First'}</option>
+
+                        {chapters.map(chapter => (
+
+                          <option key={chapter} value={chapter}>{chapter}</option>
+
+                        ))}
+
+                      </select>
+
+                      <select
+
+                        value={selectedVerseNumber}
+
+                        onChange={(e) => setSelectedVerseNumber(e.target.value)}
+
+                        disabled={!selectedChapter}
+
+                        className="flex-1 px-4 py-2 rounded-full border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+
+                      >
+
+                        <option value="" disabled>{selectedChapter ? 'Select a Verse' : 'Select a Chapter First'}</option>
+
+                        {verses.map(verse => (
+
+                          <option key={verse} value={verse}>{verse}</option>
+
+                        ))}
+
+                      </select>
+
+                    </div>
+
+                    <div className="flex justify-center flex-col sm:flex-row gap-4">
+
+                      <button
+
+                        onClick={handleVerseSearch}
+
+                        disabled={!selectedBook || !selectedChapter || !selectedVerseNumber || isLoading}
+
+                        className="px-6 py-2 bg-indigo-500 hover:bg-indigo-600 text-white font-semibold rounded-full transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+
+                      >
+
+                        Search Verse
+
+                      </button>
+
+                    </div>
+
+                  </div>
+
+                 
+
+                  <div className="bg-gray-50 dark:bg-gray-700 p-4 sm:p-6 rounded-xl border border-gray-200 dark:border-gray-700 mb-6 transition-all duration-300">
+
+                    <h2 className="text-xl font-semibold mb-4 text-indigo-700 dark:text-indigo-300">Search for a Verse by Topic</h2>
+
+                    <div className="flex flex-col sm:flex-row gap-4 mb-4">
+
+                      <input
+
+                        type="text"
+
+                        placeholder="e.g., healing, anxiety, strength"
+
+                        value={topic}
+
+                        onChange={(e) => setTopic(e.target.value)}
+
+                        className="flex-1 px-4 py-2 rounded-full border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+
+                      />
+
+                      <button
+
+                        onClick={handleTopicSearch}
+
+                        disabled={!topic.trim() || isLoading}
+
+                        className="px-6 py-2 bg-indigo-500 hover:bg-indigo-600 text-white font-semibold rounded-full transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+
+                      >
+
+                        Search Topic
+
+                      </button>
+
+                    </div>
+
+                    <div className="flex justify-center">
+
+                        <button
+
+                          onClick={handleRandomVerse}
+
+                          disabled={isLoading}
+
+                          className="px-6 py-2 mt-2 bg-slate-500 hover:bg-slate-600 text-white font-semibold rounded-full transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+
+                        >
+
+                          Get a Random Verse
+
+                        </button>
+
+                    </div>
+
+                  </div>
+
+ 
+
+                  {isLoading ? (
+
+                    <div className="flex justify-center items-center h-24">
+
+                      <svg className="animate-spin h-8 w-8 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+
+                      </svg>
+
+                    </div>
+
+                  ) : (
+
+                    devotionalContent && (
+
+                    <>
+
+                      <div className="flex items-center space-x-2 text-5xl mb-4">
+
+                        <span>{getEmojiForVerse(devotionalContent?.verse)}</span>
+
+                        <h2 className="text-2xl font-semibold text-indigo-700 dark:text-indigo-300">{devotionalContent?.verse}</h2>
+
+                      </div>
+
+                      <p className="text-gray-700 dark:text-gray-200 leading-relaxed text-sm sm:text-base mb-4">
+
+                        {devotionalContent?.verseText}
+
+                      </p>
+
+                      <div className="space-y-4">
+
+                        <div>
+
+                          <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">Devotional</h3>
+
+                          <p className="text-gray-700 dark:text-gray-300 text-sm">{devotionalContent?.devotional}</p>
+
+                        </div>
+
+                        <div>
+
+                          <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">Affirmation</h3>
+
+                          <p className="text-gray-700 dark:text-gray-300 text-sm italic">"{devotionalContent?.affirmation}"</p>
+
+                        </div>
+
+                        <div>
+
+                          <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">A Prayer to Consider</h3>
+
+                          <p className="text-gray-700 dark:text-gray-300 text-sm">{devotionalContent?.prayer}</p>
+
+                        </div>
+
+                      </div>
+
+                      <div className="mt-6 flex justify-center items-center gap-4">
+
+                        <button
+
+                          onClick={audioInstance ? handleTogglePlayPause : handleReadAloud}
+
+                          disabled={isAudioLoading}
+
+                          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-full transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+
+                        >
+
+                          {isSpeaking ? (
+
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+
+                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 112 0v8a1 1 0 11-2 0V6zm-5 1a1 1 0 011-1h2a1 1 0 110 2H6a1 1 0 01-1-1zm10 0a1 1 0 011-1h2a1 1 0 110 2h-2a1 1 0 01-1-1z" clipRule="evenodd" />
+
+                            </svg>
+
+                          ) : (
+
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+
+                            </svg>
+
+                          )}
+
+                        </button>
+
+                      </div>
+
+                    </>
+
+                    )
+
+                  )}
+
+                  <div className="mt-4 p-2 text-xs text-center text-gray-500 dark:text-gray-400">
+
+                    {isAudioLoading ? "Generating and loading audio..." : isSpeaking ? "Playing audio..." : audioInstance && audioInstance.paused ? "Audio paused." : ""}
+
+                  </div>
+
+                </div>
+
+       
+
+                <div className="border-t border-gray-200 dark:border-gray-700 p-6 sm:p-8 mt-6">
+
+                  <div className="mb-6">
+
+                    {devotionalContent?.question && (
+
+                      <div className="p-4 rounded-xl border-l-4 border-indigo-500 bg-indigo-50 dark:bg-indigo-950 mb-4 transition-all duration-300">
+
+                        <p className="text-indigo-800 dark:text-indigo-200 text-sm font-medium leading-snug">
+
+                          <span className="font-bold">Prompt for Journaling:</span> {devotionalContent.question}
+
+                        </p>
+
+                      </div>
+
+                    )}
+
+                    <label htmlFor="journal" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+
+                      Your Prayer or Reflection
+
+                    </label>
+
+                    <textarea
+
+                      id="journal"
+
+                      className="w-full h-32 p-4 text-gray-700 dark:text-gray-200 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 transition-all duration-200 resize-none"
+
+                      placeholder="Write your thoughts here..."
+
+                      value={journalEntry}
+
+                      onChange={(e) => setJournalEntry(e.target.value)}
+
+                    ></textarea>
+
+                  </div>
+
+       
+
+                  <div className="flex justify-center">
+
+                    <button
+
+                      onClick={handleSaveEntry}
+
+                      className="w-full sm:w-auto px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-full shadow-lg transition-transform transform hover:scale-105 active:scale-95 duration-200"
+
+                    >
+
+                      {selectedEntry ? 'Update Entry' : 'Save Entry'}
+
+                    </button>
+
+                  </div>
+
+                </div>
+
+       
+
+                {/* Saved Entries Section */}
+
+                <div className="border-t border-gray-200 dark:border-gray-700 p-6 sm:p-8 mt-6">
+
+                  <div className="flex justify-between items-center mb-4">
+
+                    <h2 className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">Your Journal</h2>
+
+                    <input
+
+                      type="text"
+
+                      placeholder="Search journal..."
+
+                      value={searchTerm}
+
+                      onChange={(e) => setSearchTerm(e.target.value)}
+
+                      className="px-4 py-2 w-1/2 rounded-full border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+
+                    />
+
+                  </div>
+
+                  {filteredEntries.length === 0 ? (
+
+                    <p className="text-gray-500 dark:text-gray-400 text-center">No matching entries found.</p>
+
+                  ) : (
+
+                    <div className="space-y-4">
+
+                      {filteredEntries.map((entry) => (
+
+                        <div key={entry.id} className="bg-gray-50 dark:bg-gray-700 p-4 rounded-xl border border-gray-200 dark:border-gray-600 shadow-md">
+
+                          <div className="flex justify-between items-center mb-2">
+
+                            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{entry.date}</span>
+
+                            <div className="flex space-x-2">
+
+                              <button
+
+                                onClick={() => handleEditEntry(entry)}
+
+                                className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
+
+                              >
+
+                                Edit
+
+                              </button>
+
+                              <button
+
+                                onClick={() => handleDeleteEntry(entry.id)}
+
+                                className="text-xs text-red-600 dark:text-red-400 hover:underline"
+
+                              >
+
+                                Delete
+
+                              </button>
+
+                            </div>
+
+                          </div>
+
+                          <p className="text-sm text-gray-700 dark:text-gray-200 leading-snug break-words">{entry.text}</p>
+
+                         
+
+                          {/* Toggle button and collapsible content */}
+
+                          {entry.devotional && (
+
+                            <div className="mt-4">
+
+                              <button
+
+                                onClick={() => handleToggleExpand(entry.id)}
+
+                                className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline focus:outline-none"
+
+                              >
+
+                                {expandedEntryId === entry.id ? 'Hide Devotional' : 'Show Devotional'}
+
+                              </button>
+
+                              {expandedEntryId === entry.id && (
+
+                                <div className="mt-2 p-3 bg-gray-100 dark:bg-gray-600 rounded-lg">
+
+                                  <div className="flex items-center space-x-2 text-2xl mb-2">
+
+                                    <span>{getEmojiForVerse(entry.devotional.verse)}</span>
+
+                                    <h3 className="text-sm font-bold text-gray-800 dark:text-gray-100">{entry.devotional.verse}</h3>
+
+                                  </div>
+
+                                  <p className="text-xs text-gray-700 dark:text-gray-200 leading-snug mt-1">{entry.devotional.verseText}</p>
+
+                                  <p className="text-xs text-gray-700 dark:text-gray-200 leading-snug mt-2">{entry.devotional.devotional}</p>
+
+                                  <p className="text-xs text-gray-700 dark:text-gray-200 leading-snug mt-2 italic">"{entry.devotional.affirmation}"</p>
+
+                                  <p className="text-xs text-gray-800 dark:text-gray-100 font-medium leading-snug mt-2">
+
+                                    <span className="font-bold">Prompt:</span> {entry.devotional.question}
+
+                                  </p>
+
+                                </div>
+
+                              )}
+
+                            </div>
+
+                          )}
+
+                        </div>
+
+                      ))}
+
+                    </div>
+
+                  )}
+
+                </div>
+
+              </div>
+
+               <div className="mt-4 p-2 text-xs text-gray-500 dark:text-gray-400 text-center">
+
+                User ID: {userId ? userId : 'Loading...'}
+
+              </div>
+
+            </div>
+
+          );
+
+        };
+
+       
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+
+    </script>
+
+</body>
+
+</html>
+
+ 
+
+ 
